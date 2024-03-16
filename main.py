@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 #############################
 
 PLOT_TITLE = r'$ InAs_{(1-x)}Sb_x $'
+X_LABEL = r'x value of $ Sb_x $ composition'
 PARAMETERS = [
     # Format should be a tuple containing (B_BC,B_AC,bowing parameter)
     # where material format is: A_xB_(1-x)C
@@ -26,7 +27,7 @@ FONT_SIZE = 20
 SAVE_PLOT_AS_PNG = True
 SHOW_IMAGE = False
 
-##########################
+#############################
 
 def calculate_energy(value_a:float, value_b:float, value_c:float):
     """
@@ -60,9 +61,10 @@ def create_all_plots(x_list,
         axes.plot(x_list,energy_values,label=labels[i])
     axes.grid()
     axes.set_ylabel("Energy [eV]",fontsize=FONT_SIZE)
-    axes.set_xlabel("x",fontsize=FONT_SIZE)
+    axes.set_xlabel(X_LABEL,fontsize=FONT_SIZE)
     axes.set_title(material_name,fontsize=FONT_SIZE)
     axes.legend(fontsize=FONT_SIZE)
+    axes.tick_params(axis='both',labelsize=FONT_SIZE-6)
     if show_image:
         figure.show()
         figure.waitforbuttonpress()
