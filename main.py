@@ -8,15 +8,15 @@ import matplotlib.pyplot as plt
 ########    CONFIG    #######
 #############################
 
-PLOT_TITLE = r'$ InAs_{(1-x)}Sb_x $'
-X_LABEL = r'x value of $ Sb_x $ composition'
+PLOT_TITLE = r'$ InAs_{x}Sb_{1-x} $'
+X_LABEL = r'x value of $ As_x $ composition'
 PARAMETERS = [
     # Format should be a tuple containing (B_BC,B_AC,bowing parameter)
     # where material format is: A_xB_(1-x)C
     # One tuple corresponds to one symmetry point
-    (0.417,0.235,0.67) #Point Gamma
-    ,(1.433,0.63,0.6) #Point X
-    ,(1.133,0.93,0.6) #Point L
+    (0.235,0.417,0.67) #Point Gamma
+    ,(0.63,1.433,0.6) #Point X
+    ,(0.93,1.133,0.6) #Point L
 ]
 LABELS = [
     r'$ \Gamma $',
