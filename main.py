@@ -32,8 +32,14 @@ PARAMETERS_BANDS = {
     "C_12":(373.5 , 452.6),
     "lattice_a": (6.4794, 6.0583),
     "lattice_a_0": 6.0583,
-    
-    
+}
+TEMPERATURE_DEPENDENCE = True
+PARAMETERS_TEMPERATURE = {
+    # Temperatures is a list of temperatures for which the calculations will be done
+    # alpha and beta are in the same format as params in previous dictionary
+    "Temperatures" : [0, 10, 300],
+    "alpha" : (0.32*10**-3,0.276*10**-3),
+    "beta" : (170,93),
 }
 LABELS = [
     r'$ \Gamma $',
@@ -74,7 +80,7 @@ def create_all_plots(x_list,
     """
     This function generates plot for all the given energies
     """
-    figure, axes = plt.subplots(figsize=(12,8))
+    figure, axes = plt.subplots(figsize=(20,16))
     for i,energy_values in enumerate(energy_lists):
         axes.plot(x_list,energy_values,label=labels[i])
     axes.grid()
@@ -108,6 +114,14 @@ def interpolate(values_to_interpolate:tuple,
     for x in x_list:
         temp.append(values_to_interpolate[0]*(1-x) + values_to_interpolate[1]*x)
     return temp
+
+def include_temperature(energy_gap:list,
+                        x_list: list,
+                        temperature: int = 0):
+    alpha = interpolate(PARAMETERS_TEMPERATURE['alpha'],x_list)
+    beta = interpolate(PARAMETERS_TEMPERATURE['beta'],x_list)
+    new_energy = [energy_gap[i] - (alpha[i]*(temperature**2) / (temperature + beta[i])) for i in range(len(energy_gap))]
+    return new_energy
 
 def calculate_not_strained_bands(energy_gap:list,
                                 x_list:list):
@@ -146,12 +160,46 @@ def main():
         x_list,energy_list = calculate_energy(value_a=a_val,value_b=b_val,value_c=c_val)
         energy_lists.append(energy_list)
     create_all_plots(x_list,energy_lists,LABELS,PLOT_TITLE,SAVE_PLOT_AS_PNG,SHOW_IMAGE)
-    if PLOT_BANDS:
-        valence_band,conduction_band = calculate_not_strained_bands(energy_lists[0],x_list)
-        strained_conduction_band, heavy_holes,light_holes = calculate_strained_bands(valence_band,conduction_band,x_list)
+    if PLOT_BANDS and not TEMPERATURE_DEPENDENCE:
+        energy_gap = energy_lists[0]
+        valence_band,conduction_band = calculate_not_strained_bands(energy_gap,x_list)
+        strained_conduction_band, heavy_holes,light_holes = calculate_strained_bands(valence_band,
+                                                                                    conduction_band,
+                                                                                    x_list)
         band_list = [valence_band,conduction_band,strained_conduction_band,heavy_holes,light_holes]
         labels = ['$ E_V $', '$ E_C $', '$ E_{C-with-strain} $', '$ E_{HH} $', '$ E_{LH} $']
-        create_all_plots(x_list,band_list,labels,PLOT_TITLE,SAVE_PLOT_AS_PNG,SHOW_IMAGE,'Energy_bands_with_strain.png')
+        create_all_plots(x_list,band_list,labels,PLOT_TITLE,
+                        SAVE_PLOT_AS_PNG,SHOW_IMAGE,'Energy_bands_with_strain.png')
+    if PLOT_BANDS and TEMPERATURE_DEPENDENCE:
+        all_bands = []
+        all_labels = []
+        for i,temperature in enumerate(PARAMETERS_TEMPERATURE['Temperatures']):
+            energy_gap = include_temperature(energy_lists[0],x_list,temperature)
+            valence_band,conduction_band = calculate_not_strained_bands(energy_gap,x_list)
+            strained_conduction_band, heavy_holes,light_holes = calculate_strained_bands(valence_band,
+                                                                                        conduction_band,
+                                                                                        x_list)
+            # We generate valence, hh and lh band only for 1st T since they're not T dependent
+            if not i:
+                band_list = [valence_band,conduction_band,
+                            strained_conduction_band,heavy_holes,light_holes]
+                labels = ['$ E_V $', f'$ E_C ({temperature}K) $',
+                         '$ E_{C-with-strain} '+ f'({temperature}K) $', '$ E_{HH} $', '$ E_{LH} $']
+                single_temp_bands = band_list
+                single_temp_labels = labels
+            else:
+                band_list = [conduction_band,strained_conduction_band]
+                labels = [f'$ E_C ({temperature}K) $','$ E_{C-with-strain} '+ f'({temperature}K) $']
+                single_temp_bands = [all_bands[0],all_bands[3],all_bands[4]]
+                single_temp_labels = [all_labels[0],all_labels[3],all_labels[4]]
+                single_temp_bands.extend(band_list)
+                single_temp_labels.extend(labels)
+            all_bands.extend(band_list)
+            all_labels.extend(labels)
+            create_all_plots(x_list,single_temp_bands,single_temp_labels,PLOT_TITLE,
+                        SAVE_PLOT_AS_PNG,SHOW_IMAGE,f'Energy_bands_with_strain_for_{temperature}K.png')
+        create_all_plots(x_list,all_bands,all_labels,PLOT_TITLE,
+                        SAVE_PLOT_AS_PNG,SHOW_IMAGE,'Energy_bands_with_strain_and_temperature.png')
     return 0
 
 if __name__ == '__main__':
