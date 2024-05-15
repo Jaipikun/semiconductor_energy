@@ -41,6 +41,10 @@ PARAMETERS_TEMPERATURE = {
     "alpha" : (0.32*10**-3,0.276*10**-3),
     "beta" : (170,93),
 }
+QUANTUM_WELL_PARAMS = {
+    "Well_widths":(100,200,300),
+    "Compositions":(0.25,0.5,0.75)
+}
 LABELS = [
     r'$ \Gamma $',
     r'X',
@@ -149,6 +153,59 @@ def calculate_strained_bands(valence_band:list,
     light_holes = [valence_band[i] + dE_hv[i] - dE_s[i] for i in range(len(x_list))]
     return (strained_conduction_band,heavy_holes,light_holes)
 
+def create_quantum_well(energy_list: list,
+                            valence_band:list,
+                            conduction_band:list,
+                            heavy_holes: list,
+                            light_holes: list,
+                            conduction_tension: list,
+                            well_width: float,
+                            composition: int,
+                            temperature: int):
+    """
+    This function creates a plot of quantum well with the given material
+    """
+    composition = int(composition * 100)
+    position = [i for i in range(0,1001)]
+    valence_hh = [0 for i in position]
+    valence_lh = [0 for i in position]
+    conduction = [0 + energy_list[0] for i in position]
+    conduction_no_tension = [0 + energy_list[0] for i in position]
+    valence_no_tension = [0 for i in position]
+    for i,x in enumerate(position):
+        if x in range(int(500-well_width/2.0),int(501+well_width/2.0)):
+            valence_hh[i] = heavy_holes[composition] - PARAMETERS_BANDS["VBO"][1]
+            valence_lh[i] = light_holes[composition] - PARAMETERS_BANDS["VBO"][1]
+            conduction[i] = conduction_tension[composition] - PARAMETERS_BANDS["VBO"][1]
+            conduction_no_tension[i] = conduction_band[composition] - PARAMETERS_BANDS["VBO"][1]
+            valence_no_tension[i] = valence_band[composition] - PARAMETERS_BANDS["VBO"][1]
+            if x==500:
+                print(f"temp:{temperature},comp:{composition},width:{well_width}")
+                print(f"Naprężone: {conduction[i]-valence_hh[i]}")
+                print(f'nienaprezone: {conduction_no_tension[i] - valence_no_tension[i]}')
+    
+    fig, axes = plt.subplots(figsize=(14,10),nrows=1,ncols=2)
+    axes[0].plot(position,valence_hh,'b',label='$ E_{V-HEAVY-HOLES}$')
+    axes[0].plot(position,valence_lh,'--c',label='$ E_{V-LIGHT-HOLES}$')
+    axes[0].plot(position,conduction,'m',label='$ E_{C-WITH-TENSION} $')
+    axes[0].legend(fontsize=12,loc='center left')
+    axes[0].set_title("With tension",fontsize=20)
+    axes[0].set_ylabel('Energy [eV]',fontsize=20)
+    axes[0].set_xlabel('Position [Å]',fontsize=20)
+    axes[0].grid()
+    #fig.savefig(f"Quantum_well_with_tension_{temperature}K_{well_width}nm_composition_{composition}.png")
+    #fig, axes = plt.subplots(figsize=(12,8))
+    axes[1].plot(position,valence_no_tension,'g',label='$ E_V $')
+    axes[1].plot(position,conduction_no_tension,'r',label='$ E_C $')
+    axes[1].legend(fontsize=12,loc='center right')
+    axes[1].set_title("Without tension",fontsize=20)
+    #axes[1].set_ylabel('Energy [eV]',fontsize=20)
+    axes[1].set_xlabel('Position [Å]',fontsize=20)
+    axes[1].grid()
+    fig.suptitle('$ In_{'+f"{composition/100}"+'}As_{'+f"{(100-composition)/100}"+'}Sb $ - InAs base for ' + f"T = {temperature}K and width = {int(well_width/10)} nm",fontsize=20)
+    fig.savefig(f"Quantum_well_{temperature}K_{int(well_width/10)}nm_composition_{composition}.png")
+
+
 def main():
     """
     Main of the whole module, invokes all the functions needed for
@@ -198,8 +255,23 @@ def main():
             all_labels.extend(labels)
             create_all_plots(x_list,single_temp_bands,single_temp_labels,PLOT_TITLE,
                         SAVE_PLOT_AS_PNG,SHOW_IMAGE,f'Energy_bands_with_strain_for_{temperature}K.png')
+            
+            compositions = QUANTUM_WELL_PARAMS['Compositions']
+            widths = QUANTUM_WELL_PARAMS['Well_widths']
+            for width in widths:
+                for composition in compositions:
+                    create_quantum_well(energy_list = energy_list,
+                                    valence_band=valence_band,
+                                    conduction_band=conduction_band,
+                                    heavy_holes = heavy_holes,
+                                    light_holes = light_holes,
+                                    conduction_tension = strained_conduction_band,
+                                    well_width = width,
+                                    composition = composition,
+                                    temperature = temperature)
         create_all_plots(x_list,all_bands,all_labels,PLOT_TITLE,
                         SAVE_PLOT_AS_PNG,SHOW_IMAGE,'Energy_bands_with_strain_and_temperature.png')
+    
     return 0
 
 if __name__ == '__main__':
