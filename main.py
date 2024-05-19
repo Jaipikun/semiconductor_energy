@@ -45,6 +45,11 @@ QUANTUM_WELL_PARAMS = {
     "Well_widths":(100,200,300),
     "Compositions":(0.25,0.5,0.75)
 }
+EFFECTIVE_MASSES = {
+    "gamma_1":(34.8,20.0),
+    "gamma_2":(15.5,8.5),
+    "electron_mass":(0.0135,0.026),
+}
 LABELS = [
     r'$ \Gamma $',
     r'X',
@@ -202,8 +207,33 @@ def create_quantum_well(energy_list: list,
     #axes[1].set_ylabel('Energy [eV]',fontsize=20)
     axes[1].set_xlabel('Position [Å]',fontsize=20)
     axes[1].grid()
-    fig.suptitle('$ In_{'+f"{composition/100}"+'}As_{'+f"{(100-composition)/100}"+'}Sb $ - InAs base for ' + f"T = {temperature}K and width = {int(well_width/10)} nm",fontsize=20)
+    fig.suptitle('$ InAs_{'+f"{composition/100}"+'}Sb_{'+f"{(100-composition)/100}"+'} $ - InAs base for ' + f"T = {temperature}K and width = {int(well_width/10)} nm",fontsize=20)
     fig.savefig(f"Quantum_well_{temperature}K_{int(well_width/10)}nm_composition_{composition}.png")
+
+def calculate_critical_mass(position:list):
+    gamma_1_interpolated = interpolate(EFFECTIVE_MASSES['gamma_1'],position)
+    gamma_2_interpolated = interpolate(EFFECTIVE_MASSES['gamma_2'],position)
+    electron_mass_interpolated = interpolate(EFFECTIVE_MASSES['electron_mass'],position)
+    light_holes_mass = [(gamma_1_interpolated[i] + 2*gamma_2_interpolated[i])**-1 for i in range(len(position))]
+    heavy_holes_mass = [(gamma_1_interpolated[i] - 2*gamma_2_interpolated[i])**-1 for i in range(len(position))]
+    fig, axes = plt.subplots(figsize=(14,10))
+    axes.plot(position,electron_mass_interpolated,'r',linewidth=2,label='electrons')
+    axes.plot(position,light_holes_mass,'c',linewidth=2,label='light holes')
+    axes.plot(position,heavy_holes_mass,'b',linewidth=2,label='heavy holes')
+    axes.legend(fontsize=20)
+    axes.set_ylabel("Effective mass [$ m_e $]",fontsize=FONT_SIZE)
+    axes.set_xlabel(X_LABEL,fontsize=FONT_SIZE)
+    axes.set_title('$ InAs_{x}Sb_{1-x} $ - InAs base',fontsize=FONT_SIZE)
+    axes.grid()
+    fig.savefig("test.png")
+
+def Matthews_Blakeslee_model(h_c):
+
+
+def bisection(x_range:tuple,function):
+    
+
+def calculate_critical_thickness():
 
 
 def main():
@@ -259,6 +289,7 @@ def main():
             compositions = QUANTUM_WELL_PARAMS['Compositions']
             widths = QUANTUM_WELL_PARAMS['Well_widths']
             for width in widths:
+                break
                 for composition in compositions:
                     create_quantum_well(energy_list = energy_list,
                                     valence_band=valence_band,
@@ -271,7 +302,7 @@ def main():
                                     temperature = temperature)
         create_all_plots(x_list,all_bands,all_labels,PLOT_TITLE,
                         SAVE_PLOT_AS_PNG,SHOW_IMAGE,'Energy_bands_with_strain_and_temperature.png')
-    
+    calculate_critical_mass(x_list)
     return 0
 
 if __name__ == '__main__':
