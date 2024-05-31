@@ -1,9 +1,8 @@
 """
 Main module for calculating and plotting energy as a function of x for chosen material
 """
+from math import pi,log,sqrt
 import matplotlib.pyplot as plt
-from scipy.optimize import bisect,newton
-from math import pi,log,sqrt,inf
 #############################
 ########    CONFIG    #######
 #############################
@@ -119,6 +118,9 @@ def get_parameters(parameters:tuple = (0,0,0)):
 
 def interpolate(values_to_interpolate:tuple,
                 x_list:list):
+    """
+    Interpolates two values
+    """
     temp = []
     for x in x_list:
         temp.append(values_to_interpolate[0]*(1-x) + values_to_interpolate[1]*x)
@@ -127,6 +129,9 @@ def interpolate(values_to_interpolate:tuple,
 def include_temperature(energy_gap:list,
                         x_list: list,
                         temperature: int = 0):
+    """
+    Calculates energy gap based on temperature
+    """
     alpha = interpolate(PARAMETERS_TEMPERATURE['alpha'],x_list)
     beta = interpolate(PARAMETERS_TEMPERATURE['beta'],x_list)
     new_energy = [energy_gap[i] - (alpha[i]*(temperature**2) / (temperature + beta[i])) for i in range(len(energy_gap))]
@@ -134,6 +139,9 @@ def include_temperature(energy_gap:list,
 
 def calculate_not_strained_bands(energy_gap:list,
                                 x_list:list):
+    """
+    Calculates unstrained bands - valence and conduction band
+    """
     valence_band = interpolate(PARAMETERS_BANDS['VBO'],x_list)
     conduction_band = [valence_band[i] + energy_gap[i] for i in range(len(x_list))]
     return (valence_band,conduction_band)
@@ -141,6 +149,9 @@ def calculate_not_strained_bands(energy_gap:list,
 def calculate_strained_bands(valence_band:list,
                             conduction_band:list,
                             x_list:list):
+    """
+    Calucates the strained bands - conduction, heavy holes and light holes bands
+    """
     lattice_a_0 = PARAMETERS_BANDS['lattice_a_0']
     interpolated_lattice = interpolate(PARAMETERS_BANDS['lattice_a'],x_list)
     c11_interpolated = interpolate(PARAMETERS_BANDS['C_11'],x_list)
@@ -185,10 +196,10 @@ def create_quantum_well(energy_list: list,
             conduction_no_tension[i] = conduction_band[composition] - PARAMETERS_BANDS["VBO"][1]
             valence_no_tension[i] = valence_band[composition] - PARAMETERS_BANDS["VBO"][1]
             if x==500:
-                print(f"temp:{temperature},comp:{composition},width:{well_width}")
-                print(f"Naprężone: {conduction[i]-valence_hh[i]}")
-                print(f'nienaprezone: {conduction_no_tension[i] - valence_no_tension[i]}')
-    
+                print(f"temp:{temperature} K,comp:{composition},width:{well_width}")
+                print(f"Strained: {conduction[i]-valence_hh[i]} eV")
+                print(f'Without strain: {conduction_no_tension[i] - valence_no_tension[i]} eV')
+
     fig, axes = plt.subplots(figsize=(14,10),nrows=1,ncols=2)
     axes[0].plot(position,valence_hh,'b',label='$ E_{V-HEAVY-HOLES}$')
     axes[0].plot(position,valence_lh,'--c',label='$ E_{V-LIGHT-HOLES}$')
@@ -198,19 +209,19 @@ def create_quantum_well(energy_list: list,
     axes[0].set_ylabel('Energy [eV]',fontsize=20)
     axes[0].set_xlabel('Position [Å]',fontsize=20)
     axes[0].grid()
-    #fig.savefig(f"Quantum_well_with_tension_{temperature}K_{well_width}nm_composition_{composition}.png")
-    #fig, axes = plt.subplots(figsize=(12,8))
     axes[1].plot(position,valence_no_tension,'g',label='$ E_V $')
     axes[1].plot(position,conduction_no_tension,'r',label='$ E_C $')
     axes[1].legend(fontsize=12,loc='center right')
     axes[1].set_title("Without tension",fontsize=20)
-    #axes[1].set_ylabel('Energy [eV]',fontsize=20)
     axes[1].set_xlabel('Position [Å]',fontsize=20)
     axes[1].grid()
     fig.suptitle('$ InAs_{'+f"{composition/100}"+'}Sb_{'+f"{(100-composition)/100}"+'} $ - InAs base for ' + f"T = {temperature}K and width = {int(well_width/10)} nm",fontsize=20)
-    fig.savefig(f"Quantum_well_{temperature}K_{int(well_width/10)}nm_composition_{composition}.png")
+    fig.savefig(f"quantum_well_plots\\Quantum_well_{temperature}K_{int(well_width/10)}nm_composition_{composition}.png")
 
 def calculate_critical_mass(position:list):
+    """
+    Calculates and plots the critical mass based on composition
+    """
     gamma_1_interpolated = interpolate(EFFECTIVE_MASSES['gamma_1'],position)
     gamma_2_interpolated = interpolate(EFFECTIVE_MASSES['gamma_2'],position)
     electron_mass_interpolated = interpolate(EFFECTIVE_MASSES['electron_mass'],position)
@@ -218,27 +229,33 @@ def calculate_critical_mass(position:list):
     heavy_holes_mass = [(gamma_1_interpolated[i] - 2*gamma_2_interpolated[i])**-1 for i in range(len(position))]
     fig, axes = plt.subplots(figsize=(14,10))
     axes.plot(position,electron_mass_interpolated,'r',linewidth=2,label='electrons')
-    axes.plot(position,light_holes_mass,'c',linewidth=2,label='light holes')
+    axes.plot(position,light_holes_mass,'--c',linewidth=2,label='light holes')
     axes.plot(position,heavy_holes_mass,'b',linewidth=2,label='heavy holes')
     axes.legend(fontsize=20)
     axes.set_ylabel("Effective mass [$ m_e $]",fontsize=FONT_SIZE)
     axes.set_xlabel(X_LABEL,fontsize=FONT_SIZE)
     axes.set_title('$ InAs_{x}Sb_{1-x} $ - InAs base',fontsize=FONT_SIZE)
     axes.grid()
-    fig.savefig("test.png")
+    fig.savefig("Effective_mass_plot.png")
 
-def Matthews_Blakeslee_model(h_c,i,x_list):
+def matthews_blakeslee_model(h_c,i,x_list):
+    """
+    Matthews Blakeslee model changed for zero search
+    """
     lattice_a_0 = PARAMETERS_BANDS['lattice_a_0']
     interpolated_lattice = interpolate(PARAMETERS_BANDS['lattice_a'],x_list)
     c11_interpolated = interpolate(PARAMETERS_BANDS['C_11'],x_list)
     c12_interpolated = interpolate(PARAMETERS_BANDS['C_12'],x_list)
-    b = interpolated_lattice[i] / (10*sqrt(2))
+    b = interpolated_lattice[i] / sqrt(2)
     v = c12_interpolated[i] / (c11_interpolated[i] + c12_interpolated[i])
     f = abs((lattice_a_0 - interpolated_lattice[i])/interpolated_lattice[i])
-    y = (b / (2*f*pi)) * ((1-0.25*v) / (1+v)) * (log((h_c) / b) + 1) - h_c
+    y = (b / (2*f*pi)) * ((1-0.25*v) / (1+v)) * (log(h_c / b) + 1) - h_c
     return y
 
 def bisection(function,x_min,x_max,args,tolerance: float = 10**-12):
+    """
+    Bisection function for finding zeros in a given function
+    """
     x_intercept = (x_min + x_max) / 2.0
     i = args[0]
     x_list = args[1]
@@ -256,16 +273,27 @@ def bisection(function,x_min,x_max,args,tolerance: float = 10**-12):
 
 
 def calculate_critical_thickness(x_list):
+    """
+    Calculates and plots critical thickness as a function of composition
+    """
     no_iterations = len(x_list) - 1
     temp = []
     for i in range(no_iterations):
-        #h_c = bisect(Matthews_Blakeslee_model,10**-20,10**20,args=(i,x_list))
-        h_c = bisection(Matthews_Blakeslee_model,1,7000,args=(i,x_list))
-        print(f"#{i} : {h_c}")
+        h_c = bisection(matthews_blakeslee_model,10,7000,args=(i,x_list))
         temp.append(h_c)
+    temp.append(3*temp[no_iterations-1])
     plt.figure(figsize=(12,8))
-    plt.plot(x_list[0:no_iterations],temp)
-    plt.savefig("test_2.png")
+    plt.plot(x_list,temp)
+    plt.title("Critical thickness for " + PLOT_TITLE + "on InAs",fontsize=FONT_SIZE)
+    plt.xlabel(X_LABEL,fontsize=FONT_SIZE)
+    plt.ylabel(r"Critical thickness [$ \AA $]",fontsize=FONT_SIZE)
+    plt.savefig("Critical_thickness.png")
+    plt.figure(figsize=(12,8))
+    plt.plot(x_list[0:int(no_iterations / 2)],temp[0:int(no_iterations / 2)])
+    plt.title("Critical thickness for " + PLOT_TITLE + " on InAs - reduced",fontsize=FONT_SIZE)
+    plt.xlabel(X_LABEL,fontsize=FONT_SIZE)
+    plt.ylabel(r"Critical thickness [$ \AA $]",fontsize=FONT_SIZE)
+    plt.savefig("Critical_thickness_reduced.png")
 
 def main():
     """
@@ -317,11 +345,9 @@ def main():
             all_labels.extend(labels)
             create_all_plots(x_list,single_temp_bands,single_temp_labels,PLOT_TITLE,
                         SAVE_PLOT_AS_PNG,SHOW_IMAGE,f'Energy_bands_with_strain_for_{temperature}K.png')
-            
             compositions = QUANTUM_WELL_PARAMS['Compositions']
             widths = QUANTUM_WELL_PARAMS['Well_widths']
             for width in widths:
-                break
                 for composition in compositions:
                     create_quantum_well(energy_list = energy_list,
                                     valence_band=valence_band,
