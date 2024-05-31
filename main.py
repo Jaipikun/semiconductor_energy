@@ -2,8 +2,8 @@
 Main module for calculating and plotting energy as a function of x for chosen material
 """
 import matplotlib.pyplot as plt
-
-
+from scipy.optimize import bisect,newton
+from math import pi,log,sqrt,inf
 #############################
 ########    CONFIG    #######
 #############################
@@ -227,14 +227,45 @@ def calculate_critical_mass(position:list):
     axes.grid()
     fig.savefig("test.png")
 
-def Matthews_Blakeslee_model(h_c):
+def Matthews_Blakeslee_model(h_c,i,x_list):
+    lattice_a_0 = PARAMETERS_BANDS['lattice_a_0']
+    interpolated_lattice = interpolate(PARAMETERS_BANDS['lattice_a'],x_list)
+    c11_interpolated = interpolate(PARAMETERS_BANDS['C_11'],x_list)
+    c12_interpolated = interpolate(PARAMETERS_BANDS['C_12'],x_list)
+    b = interpolated_lattice[i] / (10*sqrt(2))
+    v = c12_interpolated[i] / (c11_interpolated[i] + c12_interpolated[i])
+    f = abs((lattice_a_0 - interpolated_lattice[i])/interpolated_lattice[i])
+    y = (b / (2*f*pi)) * ((1-0.25*v) / (1+v)) * (log((h_c) / b) + 1) - h_c
+    return y
+
+def bisection(function,x_min,x_max,args,tolerance: float = 10**-12):
+    x_intercept = (x_min + x_max) / 2.0
+    i = args[0]
+    x_list = args[1]
+    if function(x_min,i,x_list)*function(x_intercept,i,x_list)<=0 and function(x_max,i,x_list)*function(x_intercept,i,x_list)<=0:
+        return bisection(function,x_intercept,x_max,args,tolerance)
+    while abs(function(x_intercept,i,x_list))>tolerance:
+        if function(x_min,i,x_list)*function(x_intercept,i,x_list)<=0:
+            x_max = x_intercept
+        elif function(x_max,i,x_list)*function(x_intercept,i,x_list)<=0:
+            x_min = x_intercept
+        else:
+            return None
+        x_intercept = (x_min + x_max) / 2.0
+    return x_intercept
 
 
-def bisection(x_range:tuple,function):
-    
-
-def calculate_critical_thickness():
-
+def calculate_critical_thickness(x_list):
+    no_iterations = len(x_list) - 1
+    temp = []
+    for i in range(no_iterations):
+        #h_c = bisect(Matthews_Blakeslee_model,10**-20,10**20,args=(i,x_list))
+        h_c = bisection(Matthews_Blakeslee_model,1,7000,args=(i,x_list))
+        print(f"#{i} : {h_c}")
+        temp.append(h_c)
+    plt.figure(figsize=(12,8))
+    plt.plot(x_list[0:no_iterations],temp)
+    plt.savefig("test_2.png")
 
 def main():
     """
@@ -247,6 +278,7 @@ def main():
         x_list,energy_list = calculate_energy(value_a=a_val,value_b=b_val,value_c=c_val)
         energy_lists.append(energy_list)
     create_all_plots(x_list,energy_lists,LABELS,PLOT_TITLE,SAVE_PLOT_AS_PNG,SHOW_IMAGE)
+    calculate_critical_thickness(x_list)
     if PLOT_BANDS and not TEMPERATURE_DEPENDENCE:
         energy_gap = energy_lists[0]
         valence_band,conduction_band = calculate_not_strained_bands(energy_gap,x_list)
